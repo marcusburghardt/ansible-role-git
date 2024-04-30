@@ -1,0 +1,6 @@
+---
+# This file has variables specific for the configure_ps task.
+
+# ~/.bashrc is the default file where the PS1 is configured
+user_env_file: "{{ ansible_facts['user_dir'] }}/.bashrc"
+...

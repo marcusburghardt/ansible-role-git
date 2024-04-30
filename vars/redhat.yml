@@ -1,0 +1,7 @@
+---
+# This file has the custom configurations for redhat and fedora.
+
+packages:
+  - git
+
+...
