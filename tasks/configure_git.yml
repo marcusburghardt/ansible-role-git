@@ -12,6 +12,7 @@
     section: "{{ item.section }}"
     option: "{{ item.parameter }}"
     value: "{{ item.value }}"
+    mode: '0640'
   loop: "{{ git_user_config }}"
   when:
     - item.enabled
