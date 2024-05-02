@@ -9,8 +9,3 @@ git_username: 'Name Surname'
 git_email: 'myemail@mydomain.com'
 git_editor: 'vim'
 git_autocrlf: 'input'
-
-# When working with many branches it is useful to see the current branch in the PS1
-# environment variable. If the below variable is enabled, the PS1 will get a nice and
-# simple update which can help the navigation between branches.
-ps1_update: false

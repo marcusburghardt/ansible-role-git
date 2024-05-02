@@ -1,6 +1,10 @@
 ---
 # This file has variables specific for the configure_ps task.
 
+# When working with many branches it is useful to see the current branch in the PS1
+# environment variable. If "configure_ps" is enabled, the PS1 will get a nice and
+# simple update which can help the navigation between branches.
+
 # ~/.bashrc is the default file where the PS1 is configured
 user_env_file: "{{ ansible_facts['user_dir'] }}/.bashrc"
 ...
