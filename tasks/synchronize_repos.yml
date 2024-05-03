@@ -54,4 +54,14 @@
     - item.enabled
     - item.remote is not false
     - result_git_remote_add is skipped
+
+- name: "{{ role_name }} | {{ task.name }} | Ensure the Hints files"
+  ansible.builtin.copy:
+    dest: "{{ git_base_dir }}"
+    mode: '0640'
+    src: "{{ role_path }}/files/GIT_HINTS.md"
+    force: true
+    backup: true
+  when:
+    - result_git_base_dir is success
 ...
