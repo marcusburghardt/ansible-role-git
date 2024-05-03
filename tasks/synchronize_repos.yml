@@ -1,0 +1,57 @@
+---
+- name: "{{ role_name }} | {{ task.name }} | Ensure the base working directory for Git"
+  ansible.builtin.file:
+    path: "{{ git_base_dir }}"
+    state: directory
+    mode: '0750'
+  register: result_git_base_dir
+
+- name: "{{ role_name }} | {{ task.name }} | Ensure the Git repositories are updated"
+  ansible.builtin.git:
+    repo: "{{ item.repo }}"
+    dest: "{{ git_base_dir }}/{{ item.dest }}"
+    clone: true
+    update: true
+  loop: "{{ git_repos }}"
+  register: result_git_update
+  ignore_errors: true
+  when:
+    - item.enabled
+    - result_git_base_dir is success
+
+- name: "{{ role_name }} | {{ task.name }} | Check if the desired remote references are present"
+  ansible.builtin.lineinfile:
+    name: "{{ git_base_dir }}/{{ item.dest }}/.git/config"
+    line: '[remote "{{ item.remote_name }}"]'
+    state: absent
+  loop: "{{ git_repos }}"
+  register: result_git_remote_check
+  check_mode: true
+  changed_when: false
+  when:
+    - item.enabled
+    - item.remote is not false
+    - result_git_base_dir is success
+
+- name: "{{ role_name }} | {{ task.name }} | Add remote references for forked Git repositories"
+  ansible.builtin.command:
+    chdir: "{{ git_base_dir }}/{{ item.item.dest }}"
+    cmd: "git remote add {{ item.item.remote_name }} {{ item.item.remote }}"
+  loop: "{{ result_git_remote_check.results }}"
+  register: result_git_remote_add
+  when:
+    - item is not skipped
+    - item.found == 0
+
+- name: "{{ role_name }} | {{ task.name }} | Ensure the forked Git repositories have desired remote references"
+  community.general.ini_file:
+    path: "{{ git_base_dir }}/{{ item.dest }}/.git/config"
+    section: 'remote "{{ item.remote_name }}"'
+    option: url
+    value: "{{ item.remote }}"
+  loop: "{{ git_repos }}"
+  when:
+    - item.enabled
+    - item.remote is not false
+    - result_git_remote_add is skipped
+...
