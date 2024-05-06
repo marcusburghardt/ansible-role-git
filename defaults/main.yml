@@ -5,15 +5,26 @@ git_tasks:
   - { enabled: true, name: 'configure_ps' }
   - { enabled: true, name: 'synchronize_repos' }
 
+# Everything created by this role will be limited to this directory scope, except for
+# users and OS specific settings.
+git_base_dir: "{{ ansible_facts['user_dir'] }}/GIT"
+
 # Username and email defined in git settings will be visible in your public commits.
 git_username: 'Name Surname'
 git_email: 'myemail@mydomain.com'
 git_editor: 'vim'
 git_autocrlf: 'input'
 
-# Everything created by this role will be limited to this directory scope, except for
-# users and OS specific settings.
-git_base_dir: "{{ ansible_facts['user_dir'] }}/GIT"
+# These are settings for the "user" section inside the git config file.
+git_user_config:
+  - { enabled: true, state: 'present',
+      section: 'user', parameter: 'name', value: '{{ git_username }}' }
+  - { enabled: true, state: 'present',
+      section: 'user', parameter: 'email', value: '{{ git_email }}' }
+  - { enabled: true, state: 'present',
+      section: 'core', parameter: 'editor', value: '{{ git_editor }}' }
+  - { enabled: true, state: 'present',
+      section: 'core', parameter: 'autocrlf', value: '{{ git_autocrlf }}' }
 
 git_repos:
   - { enabled: false, name: 'Project(fork)->Project',
