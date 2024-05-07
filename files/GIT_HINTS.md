@@ -10,6 +10,31 @@ I would recommend to use HTTPS + TOKENS especially for the great flexibility and
 
 Using TOKENS you can really easily replace, revoke and work with very granular TOKENS to reduce the risks in case of a leakage.
 
+# Basic Stuff
+## Branches
+### Check the current branches
+```
+$ git branch
+$ git branch -r
+```
+
+## Remotes
+### Check the remotes
+```$ git remote -v```
+
+### Remote Prune
+```$ git remote prune origin```
+```$ git remote prune upstream```
+
+### Delete remote branch
+```$ git push <remote> --delete <branch>```
+
+## Fetch
+### Prune while fetching
+```$ git fetch -p origin```
+```$ git fetch -p upstream --dry-run```
+```$ git config --global fetch.prune true```
+
 # Rebase
 Interactive rebase is a powerful technique. Explore it and take advantage of this whenever you need to better organize your commits.
 
