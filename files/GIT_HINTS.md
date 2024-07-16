@@ -18,6 +18,12 @@ $ git branch
 $ git branch -r
 ```
 
+### Count the number of commits in a branch
+```
+$ git checkout <branch_name>
+$ git rev-list --count HEAD ^master
+```
+
 ## Remotes
 ### Check the remotes
 ```$ git remote -v```
