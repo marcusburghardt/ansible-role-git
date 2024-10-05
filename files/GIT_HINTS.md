@@ -10,6 +10,11 @@ I would recommend to use HTTPS + TOKENS especially for the great flexibility and
 
 Using TOKENS you can really easily replace, revoke and work with very granular TOKENS to reduce the risks in case of a leakage.
 
+## Gitlab
+Here I also recommend to use HTTPS + TOKENS with proper permission and a reasonable expiration date.
+With Gitlab, until the moment I am write this, I didn't find a similar approach as `gh auth login` for Github.
+However, it is possible to use a local credential file as well documented [here](https://git-scm.com/docs/git-credential-store#_storage_format).
+
 # Basic Stuff
 ## Branches
 ### Check the current branches
@@ -63,3 +68,7 @@ Then you can work normally with the files and commit again after the desired cha
 Used to restore uncommitted changes in a file:
 
 ```$ git restore <file>```
+
+# Troubleshooting
+## Debug Hint
+GIT_CURL_VERBOSE=1 GIT_TRACE_PACKET=1 GIT_TRACE=1 git push
