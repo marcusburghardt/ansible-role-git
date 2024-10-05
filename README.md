@@ -41,6 +41,7 @@ Example Playbook
 This playbook will prepare everything with the right variables.  
 For this example, lets call this Playbook file as "ansible_git.yml":
 
+```
 ---
 - hosts: linux
   vars:
@@ -49,6 +50,7 @@ For this example, lets call this Playbook file as "ansible_git.yml":
       - { enabled: true,  name: 'configure_ps' }
   roles:
     - marcusburghardt.git
+```
 
 Considering the inventory file is in the same folder and is called "hosts_git",
 you can now run this command:  
@@ -65,6 +67,6 @@ Author Information
 ------------------
 
 Marcus Burghardt
-- https://buymeacoffee.com/marcusburghardt
-- https://github.com/marcusburghardt/
-- https://www.linkedin.com/in/marcusburghardt/
+- [https://buymeacoffee.com/marcusburghardt](https://buymeacoffee.com/marcusburghardt)
+- [https://github.com/marcusburghardt](https://github.com/marcusburghardt)
+- [https://www.linkedin.com/in/marcusburghardt](https://www.linkedin.com/in/marcusburghardt)
