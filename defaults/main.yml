@@ -25,6 +25,8 @@ git_user_config:
       section: 'core', parameter: 'editor', value: '{{ git_editor }}' }
   - { enabled: true, state: 'present',
       section: 'core', parameter: 'autocrlf', value: '{{ git_autocrlf }}' }
+  - { enabled: true, state: 'present',
+      section: 'http', parameter: 'sslVersion', value: 'tlsv1.3' }
 
 git_repos:
   - { enabled: false, name: 'Project(fork)->Project',
