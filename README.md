@@ -3,7 +3,7 @@ Role Name
 
 This Ansible Role will ensure the GIT tool is installed and configured according to the user
 preferences. Settings can be customized through variables. Take a look in the existing
-standards defined in "defaults/main.yml" and overridden them in a playbook.
+standards defined in "defaults/main.yml" and overridden them in a Playbook.
 
 This role will:
 - Ensure GIT is installed;
@@ -27,7 +27,7 @@ You can customize your environment in a very simple and centralized way editing 
 In some rare cases, you may change some configuration to reflect your local environment in:
 - vars/*.yml
 
-Observe that the above variables could be set in your playbook too, which, IMO is much more elegant. ;)  
+Observe that the above variables could be set in your Playbook too, which, IMO is much more elegant. ;)
 Take a look in the Example Playbook section.
 
 Dependencies
@@ -39,7 +39,7 @@ Example Playbook
 ----------------
 
 This playbook will prepare everything with the right variables.  
-For this example, lets call this playbook file as "ansible_git.yml":
+For this example, lets call this Playbook file as "ansible_git.yml":
 
 ---
 - hosts: linux
@@ -65,5 +65,6 @@ Author Information
 ------------------
 
 Marcus Burghardt
+- https://buymeacoffee.com/marcusburghardt
 - https://github.com/marcusburghardt/
 - https://www.linkedin.com/in/marcusburghardt/
