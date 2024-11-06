@@ -4,8 +4,33 @@
     path: "{{ user_env_file }}"
     backup: true
     block: |
+      # Colors
+      RESET="\033[0m"
+      GRAY="\[\033[90m\]"
+      RED="\033[0;31m"
+      GREEN="\033[0;32m"
+      YELLOW="\033[0;33m"
+      CYAN="\033[0;36m"
+      WHITE="\033[0;37m"
+
+      # Exit status color (green if success, red if fail)
+      EXIT_STATUS='$(if [ $? -eq 0 ]; then echo -e "\[${GREEN}\]✔\[${RESET}\]"; else echo -e "\[${RED}\]($?) ✘\[${RESET}\]"; fi)'
+
+      # Git branch and status
       parse_git_branch() {
-        git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+        if git rev-parse --is-inside-work-tree &>/dev/null; then
+          BRANCH=$(git branch --show-current 2>/dev/null)
+          STATUS=$(git status --porcelain 2>/dev/null | wc -l)
+          if [ $STATUS -eq 0 ]; then
+            echo -e "${YELLOW}(${BRANCH})${RESET} "
+          else
+            echo -e "${YELLOW}(${BRANCH}${RED}*${YELLOW})${RESET} "
+          fi
+        else
+          echo -e ""
+        fi
       }
-      export PS1="[\u@\h \[\033[32m\]\W\[\033[33m\]\$(parse_git_branch)\[\033[00m\]]$ "
+
+      # Prompt format
+      PS1="\[${CYAN}\]\u\[${WHITE}\] \[$GRAY\][\t] \[$GREEN\]\w \$(parse_git_branch)${EXIT_STATUS}\[${RESET}\] \$ "
 ...
