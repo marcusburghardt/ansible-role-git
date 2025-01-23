@@ -72,3 +72,7 @@ Used to restore uncommitted changes in a file:
 # Troubleshooting
 ## Debug Hint
 GIT_CURL_VERBOSE=1 GIT_TRACE_PACKET=1 GIT_TRACE=1 git push
+
+# References
+## Good Practices
+* https://www.conventionalcommits.org/
