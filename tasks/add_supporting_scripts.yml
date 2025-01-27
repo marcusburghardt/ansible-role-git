@@ -1,0 +1,19 @@
+---
+- name: "{{ role_name }} | {{ task.name }} | Ensure the {{ git_scripts_dir }} directory"
+  ansible.builtin.file:
+    path: "{{ git_scripts_dir }}"
+    state: directory
+    mode: '0750'
+  register: result_git_scripts_dir
+
+- name: "{{ role_name }} | {{ task.name }} | Ensure the presence of supporting scripts"
+  ansible.builtin.copy:
+    dest: "{{ git_scripts_dir }}"
+    mode: '0700'
+    src: "{{ role_path }}/files/scripts/{{ item }}"
+    force: true
+    backup: false
+  loop: "{{ git_supporting_scripts }}"
+  when:
+    - result_git_scripts_dir is success
+...

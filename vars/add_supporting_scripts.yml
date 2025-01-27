@@ -1,0 +1,5 @@
+---
+# This file has the custom variables for add_supporting_scripts task.
+git_supporting_scripts:
+  - "review_pr.py"
+...
