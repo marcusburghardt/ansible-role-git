@@ -19,7 +19,7 @@ def fetch_pr(remote, pr, review_branch):
 
 
 def update_pr(remote, pr, review_branch):
-    return subprocess.run(['git', 'pull', remote, f'pull/{pr}/head:{review_branch}', '--force'])
+    return subprocess.run(['git', 'pull', remote, f'pull/{pr}/head:{review_branch}', '--rebase', '--force'])
 
 
 def checkout_branch(branch_name):
