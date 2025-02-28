@@ -21,16 +21,12 @@ git_autocrlf: 'input'
 
 # These are settings for the "user" section inside the git config file.
 git_user_config:
-  - { enabled: true, state: 'present',
-      section: 'user', parameter: 'name', value: '{{ git_username }}' }
-  - { enabled: true, state: 'present',
-      section: 'user', parameter: 'email', value: '{{ git_email }}' }
-  - { enabled: true, state: 'present',
-      section: 'core', parameter: 'editor', value: '{{ git_editor }}' }
-  - { enabled: true, state: 'present',
-      section: 'core', parameter: 'autocrlf', value: '{{ git_autocrlf }}' }
-  - { enabled: true, state: 'present',
-      section: 'http', parameter: 'sslVersion', value: 'tlsv1.3' }
+  - { enabled: true, state: 'present', section: 'core', parameter: 'editor', value: '{{ git_editor }}' }
+  - { enabled: true, state: 'present', section: 'core', parameter: 'autocrlf', value: '{{ git_autocrlf }}' }
+  - { enabled: true, state: 'present', section: 'fetch', parameter: 'pruneTags', value: 'true' }
+  - { enabled: true, state: 'present', section: 'http', parameter: 'sslVersion', value: 'tlsv1.3' }
+  - { enabled: true, state: 'present', section: 'user', parameter: 'name', value: '{{ git_username }}' }
+  - { enabled: true, state: 'present', section: 'user', parameter: 'email', value: '{{ git_email }}' }
 
 git_repos:
   - { enabled: false, name: 'Project(fork)->Project',
