@@ -125,3 +125,6 @@ GIT_CURL_VERBOSE=1 GIT_TRACE_PACKET=1 GIT_TRACE=1 git push
 
 ## Tools
 * https://github.com/gitleaks/gitleaks
+
+## Emojis
+* https://gist.github.com/rxaviers/7360908
