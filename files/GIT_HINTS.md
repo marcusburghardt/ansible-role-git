@@ -112,6 +112,14 @@ Used to restore uncommitted changes in a file:
 
 ```$ git restore <file>```
 
+# Commits
+
+To filter all files changed in a commit:
+```bash
+git diff-tree --no-commit-id --name-only <commit_id> -r
+git show --pretty="" --name-only <commit_id>
+```
+
 # Troubleshooting
 
 ## Debug Hint
