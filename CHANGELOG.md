@@ -1,5 +1,35 @@
 # Changelog
 
+## [3.0.0](https://github.com/marcusburghardt/ansible-role-git/compare/v2.0.0...v3.0.0) (2026-04-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* License changed from MPL-2.0 to Apache-2.0.
+
+### Features
+
+* add CI/CD release infrastructure and project hygiene files ([acfa398](https://github.com/marcusburghardt/ansible-role-git/commit/acfa3987ecd65fdc7f5589cd659f09168e478734))
+
+
+### Bug Fixes
+
+* correct exception raising in review_pr.py ([22e8e74](https://github.com/marcusburghardt/ansible-role-git/commit/22e8e748a1c5086a8a5c80e63370f53dce090626))
+
+
+### Miscellaneous
+
+* archive completed changes and sync specs to main ([82acee1](https://github.com/marcusburghardt/ansible-role-git/commit/82acee1eecdd7895ec04a01ee76d02ce246cc18b))
+* **main:** release 1.0.1 ([ba0ff3f](https://github.com/marcusburghardt/ansible-role-git/commit/ba0ff3f55892046ccea4a1ecc8101bbae56ee07f))
+* **main:** release 1.0.1 ([6fa9fc6](https://github.com/marcusburghardt/ansible-role-git/commit/6fa9fc6e14efb2be976fe9077b936d43267e3f4c))
+* **main:** release 2.0.0 ([ddf2148](https://github.com/marcusburghardt/ansible-role-git/commit/ddf2148b855b2ee32f13b6766672d9895430a728))
+* **main:** release 2.0.0 ([e4aef7c](https://github.com/marcusburghardt/ansible-role-git/commit/e4aef7cea9a49a84dd0ce3576cd02e9d55069776))
+
+
+### Documentation
+
+* rewrite README with comprehensive role documentation ([176660b](https://github.com/marcusburghardt/ansible-role-git/commit/176660b11b22636c68b98bdf6c495e3350cb1afb))
+
 ## [2.0.0](https://github.com/marcusburghardt/ansible-role-git/compare/v1.0.1...v2.0.0) (2026-04-17)
 
 
