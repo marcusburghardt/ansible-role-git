@@ -59,9 +59,21 @@ you can now run this command:
 License
 -------
 
-This Source Code Form is subject to the terms of the Mozilla Public
-License, v. 2.0. If a copy of the MPL was not distributed with this
-file, You can obtain one at http://mozilla.org/MPL/2.0/.
+Licensed under the Apache License, Version 2.0.
+See the [LICENSE](LICENSE) file for details.
+
+Release Process
+---------------
+
+This project uses [release-please](https://github.com/googleapis/release-please)
+for automated versioning and changelog generation. Commits to `main` must follow
+the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+
+When a release PR is merged, a GitHub Release is created automatically, which
+triggers publishing to Ansible Galaxy.
+
+**Note:** The `GALAXY_API_KEY` repository secret must be configured for Galaxy
+publishing to work.
 
 Author Information
 ------------------

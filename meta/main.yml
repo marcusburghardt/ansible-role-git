@@ -1,7 +1,8 @@
+---
 galaxy_info:
   author: Marcus Burghardt
   description: Role to quickly configure GIT.
-  license: MPL
+  license: Apache-2.0
   min_ansible_version: '2.16'
   platforms:
     - name: EL
