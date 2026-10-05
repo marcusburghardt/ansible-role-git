@@ -1,6 +1,6 @@
 # Authentication
 
-## Github
+## GitHub
 
 Using `gh` seems to be the most practical approach to avoid playing around with TOKENS.
 In this case, you authenticate the session using MFA and the session is cached while working.
@@ -12,11 +12,15 @@ I would recommend to use HTTPS + TOKENS especially for the great flexibility and
 
 Using TOKENS you can really easily replace, revoke and work with very granular TOKENS to reduce the risks in case of a leakage.
 
-## Gitlab
+## GitLab
 
-Here I also recommend to use HTTPS + TOKENS with proper permission and a reasonable expiration date.
-With Gitlab, until the moment I am write this, I didn't find a similar approach as `gh auth login` for Github.
-However, it is possible to use a local credential file as well documented [here](https://git-scm.com/docs/git-credential-store#_storage_format).
+Using `glab` provides the same authentication experience as `gh` for GitHub.
+Authenticate the session using your GitLab credentials and the session is cached while working.
+
+```$ glab auth login```
+
+Alternatively, you can use HTTPS + TOKENS with proper permissions and a reasonable expiration date.
+In this case, it is possible to use a local credential file as documented [here](https://git-scm.com/docs/git-credential-store#_storage_format).
 
 # Basic Stuff
 

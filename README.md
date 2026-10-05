@@ -6,7 +6,7 @@ Fedora systems. Settings are customizable through variables defined in
 `defaults/main.yml` or overridden in your playbook.
 
 This role will:
-- Install Git and GitHub CLI (`gh`);
+- Install Git, GitHub CLI (`gh`), and GitLab CLI (`glab`);
 - Configure user-level Git settings in `~/.gitconfig` via a data-driven variable;
 - Customize the PS1 prompt to show the current Git branch and working tree status;
 - Deploy supporting scripts for PR review workflows;
@@ -147,21 +147,25 @@ tips on authentication, branching, rebasing, and troubleshooting.
 When `add_supporting_scripts` is enabled, the role deploys helper scripts to
 `git_scripts_dir` (default: `~/bin`).
 
-**`review_pr.py`** -- Creates a local branch from an upstream PR for code review:
+**`review_pr.py`** -- Creates a local branch from an upstream PR (GitHub) or MR
+(GitLab) for code review. The script auto-detects the forge type from the remote
+URL:
 
 ```
-review_pr.py <pr_number> [--remote upstream] [--main-branch main] [--no-checkout]
+review_pr.py <pr_number> [--remote upstream] [--main-branch main] [--no-checkout] [--forge {github,gitlab}]
 ```
 
 | Argument | Description | Default |
 |----------|-------------|---------|
-| `pr_number` | PR number to fetch (positional, required) | -- |
+| `pr_number` | PR/MR number to fetch (positional, required) | -- |
 | `--remote` | Remote name linked to the upstream repository | `upstream` |
 | `--main-branch` | Main branch name in the upstream repository | `main` |
 | `--no-checkout` | Do not checkout the review branch after fetching | -- |
+| `--forge` | Force forge type (`github` or `gitlab`) instead of auto-detecting | auto-detect |
 
-The script creates a branch named `REVIEW_PR_<number>` and checks it out.
-If the PR was already fetched, it updates the branch via rebase.
+The script creates a branch named `REVIEW_PR_<number>` (GitHub) or
+`REVIEW_MR_<number>` (GitLab) and checks it out. If the PR/MR was already
+fetched, it updates the branch via rebase.
 
 Dependencies
 ------------

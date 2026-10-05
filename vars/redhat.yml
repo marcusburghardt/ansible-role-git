@@ -4,5 +4,6 @@
 packages:
   - git
   - gh
+  - glab
 
 ...
