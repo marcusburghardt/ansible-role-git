@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.1.0](https://github.com/marcusburghardt/ansible-role-git/compare/v2.0.0...v2.1.0) (2026-10-05)
+
+
+### Features
+
+* add GitLab CLI (glab) support ([38876a9](https://github.com/marcusburghardt/ansible-role-git/commit/38876a910fec5e7eca57a7f186e6ff422e560815))
+* add GitLab merge request support to review_pr.py ([782d14c](https://github.com/marcusburghardt/ansible-role-git/commit/782d14c670f93a80414e77f866af0edf17cca3c4))
+
+
+### Miscellaneous
+
+* **deps:** bump actions/checkout from 6.0.2 to 7.0.0 ([760e680](https://github.com/marcusburghardt/ansible-role-git/commit/760e68074d1ff84a82ec4f56704ccd20c00e76ef))
+* **deps:** bump actions/checkout from 6.0.2 to 7.0.0 ([08e3d17](https://github.com/marcusburghardt/ansible-role-git/commit/08e3d175c560296a986ef505a46c0c9533ef8e7d))
+* **deps:** bump actions/setup-python from 6.2.0 to 6.3.0 ([bda0781](https://github.com/marcusburghardt/ansible-role-git/commit/bda0781ac3c5106e098ceb121a37f3cbba781ade))
+* **deps:** bump actions/setup-python from 6.2.0 to 6.3.0 ([5916d6b](https://github.com/marcusburghardt/ansible-role-git/commit/5916d6b4371d6bad642c674d79e1cc645246298c))
+* **deps:** bump googleapis/release-please-action from 4.4.1 to 5.0.0 ([18f7cc1](https://github.com/marcusburghardt/ansible-role-git/commit/18f7cc1610413fce6b29122b4f36f09035dd349b))
+* **deps:** bump googleapis/release-please-action from 4.4.1 to 5.0.0 ([32f48b2](https://github.com/marcusburghardt/ansible-role-git/commit/32f48b214e5f74cf6aa7776ec074c34319d97b38))
+
 ## [2.0.0](https://github.com/marcusburghardt/ansible-role-git/compare/v1.0.1...v2.0.0) (2026-04-17)
 
 
