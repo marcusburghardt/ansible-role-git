@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define the required contents of the README so users can discover, configure, and operate every role feature.
+
+## Requirements
 
 ### Requirement: README title and introduction
 The README SHALL use the role name `marcusburghardt.git` as the title with RST-style underline formatting. The introduction SHALL describe the role's purpose and reference `defaults/main.yml` for customization.

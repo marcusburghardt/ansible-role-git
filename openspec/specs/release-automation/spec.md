@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Derive versions, changelogs, and GitHub Releases from Conventional Commit history without manual steps.
+
+## Requirements
 
 ### Requirement: Automated versioning from conventional commits
 The repository SHALL use release-please to analyze conventional commits pushed to `main` and automatically determine the next semantic version. The release type SHALL be `simple`. The initial version SHALL be `1.0.0`.

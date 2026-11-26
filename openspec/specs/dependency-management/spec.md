@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Keep GitHub Actions dependencies current while keeping Dependabot commits consistent with the repository's commit conventions.
+
+## Requirements
 
 ### Requirement: Dependabot monitors GitHub Actions
 The repository SHALL configure Dependabot to monitor the `github-actions` package ecosystem for dependency updates on a weekly schedule. The configuration SHALL be defined in `.github/dependabot.yml`.

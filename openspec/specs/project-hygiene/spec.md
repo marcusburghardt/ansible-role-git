@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Maintain repository-level hygiene: ignore tool-managed artifacts, lint YAML consistently, and carry a valid license.
+
+## Requirements
 
 ### Requirement: Root .gitignore
 The repository SHALL have a root `.gitignore` file that ignores OpenSpec/OpenCode framework infrastructure, OpenCode plugin artifacts, and agent tool directories (`.cursor`, `.claude`, `CLAUDE.md`).
