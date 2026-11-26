@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Separate system package installation from user-level Git configuration so configuration-only runs never require elevated privileges.
+
+## Requirements
 
 ### Requirement: Package installation is an independent task
 

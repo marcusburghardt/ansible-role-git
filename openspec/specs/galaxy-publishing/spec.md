@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Publish released role versions to Ansible Galaxy automatically and protect the publishing workflow's credentials.
+
+## Requirements
 
 ### Requirement: Automated Galaxy publishing on release
 The repository SHALL automatically publish the role to Ansible Galaxy when a GitHub Release is published. The workflow SHALL be defined in `.github/workflows/ci_galaxy_publish.yml`.

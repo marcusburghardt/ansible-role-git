@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Provide a reliable helper that creates local review branches from upstream pull requests and merge requests.
+
+## Requirements
 
 ### Requirement: Script raises exception on fetch and update failure
 The `review_pr.py` script SHALL raise a `RuntimeError` when both the fetch and update operations fail, stopping execution and displaying the error message to the user.
