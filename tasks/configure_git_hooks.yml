@@ -71,12 +71,28 @@
   changed_when: true
 
 - name: "{{ role_name }} | {{ task.name }} | Install commit-msg hooks in managed repositories"
-  ansible.builtin.include_tasks:
-    file: configure_git_hook_repo.yml
-  loop: "{{ _git_hook_repo_paths }}"
-  loop_control:
-    loop_var: _git_hook_repo
-    label: "{{ _git_hook_repo }}"
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ role_path }}/files/scripts/install_commit_hooks.py"
+      - --template
+      - "{{ _git_hook_template_file }}"
+      - --on-conflict
+      - "{{ git_hooks_on_conflict }}"
+      - --repos-json
+      - "{{ _git_hook_repo_paths | to_json }}"
+  register: _git_hook_install
+  changed_when: (_git_hook_install.stdout | from_json).changed
   when:
     - git_hooks_enabled
     - git_hooks_install_existing
+    - _git_hook_repo_paths | length > 0
+
+- name: "{{ role_name }} | {{ task.name }} | Report commit-msg hook results"
+  ansible.builtin.debug:
+    msg: "{{ (_git_hook_install.stdout | from_json).results }}"
+  when:
+    - git_hooks_enabled
+    - git_hooks_install_existing
+    - _git_hook_install is defined
+    - _git_hook_install.stdout is defined

@@ -4,6 +4,7 @@
   connection: local
   environment:
     HOME: "{{ _git_test_home.path | default('/tmp') }}"
+    GIT_CONFIG_GLOBAL: "{{ _git_test_home.path | default('/tmp') }}/.gitconfig"
   vars:
     git_hooks_enabled: true
     git_hooks_install_template: true
