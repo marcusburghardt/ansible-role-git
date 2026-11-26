@@ -5,6 +5,7 @@ git_tasks:
   - { enabled: true, name: 'configure_ps' }
   - { enabled: true, name: 'add_supporting_scripts' }
   - { enabled: true, name: 'synchronize_repos' }
+  - { enabled: true, name: 'configure_git_hooks' }
 
 # Everything created by this role will be limited to this directory scope, except for
 # users and OS specific settings.
@@ -27,6 +28,22 @@ git_user_config:
   - { enabled: true, state: 'present', section: 'http', parameter: 'sslVersion', value: 'tlsv1.3' }
   - { enabled: true, state: 'present', section: 'user', parameter: 'name', value: '{{ git_username }}' }
   - { enabled: true, state: 'present', section: 'user', parameter: 'email', value: '{{ git_email }}' }
+
+# Commit-message hook management.
+# The role deploys commit_lint.py and a commit-msg hook template. It never sets
+# core.hooksPath. Installation is opt-in and per repository so existing hooks,
+# pre-commit, and Husky continue to work.
+git_hooks_enabled: false
+git_hooks_install_template: true
+git_hooks_install_existing: false
+git_hooks_require_signed_off_by: true
+git_hooks_require_assisted_by: false
+git_hooks_on_conflict: skip
+git_hooks_dir: "{{ ansible_facts['user_dir'] }}/.config/git"
+git_hooks_template_dir: "{{ git_hooks_dir }}/template"
+git_hooks_extra_repos: []
+git_hooks_max_subject_length: 72
+git_hooks_max_body_length: 72
 
 git_repos:
   - { enabled: false, name: 'Project(fork)->Project',

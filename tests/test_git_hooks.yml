@@ -1,0 +1,208 @@
+---
+- name: Verify commit-msg hook installation and conflict handling
+  hosts: localhost
+  connection: local
+  environment:
+    HOME: "{{ _git_test_home.path | default('/tmp') }}"
+  vars:
+    git_hooks_enabled: true
+    git_hooks_install_template: true
+    git_hooks_install_existing: true
+    git_hooks_require_assisted_by: true
+    git_hooks_on_conflict: skip
+    git_hooks_dir: "{{ _git_test_home.path | default('/tmp') }}/.config/git"
+    git_hooks_template_dir: "{{ git_hooks_dir }}/template"
+    git_scripts_dir: "{{ _git_test_home.path | default('/tmp') }}/bin"
+    git_tasks:
+      - { enabled: false, name: 'configure_git' }
+      - { enabled: false, name: 'configure_ps' }
+      - { enabled: true, name: 'add_supporting_scripts' }
+      - { enabled: false, name: 'synchronize_repos' }
+      - { enabled: true, name: 'configure_git_hooks' }
+    git_repos:
+      - { enabled: true, name: 'clean', dest: "{{ _git_test_home.path | default('/tmp') }}/repos/clean" }
+      - { enabled: true, name: 'precommit', dest: "{{ _git_test_home.path | default('/tmp') }}/repos/precommit" }
+      - { enabled: true, name: 'existing', dest: "{{ _git_test_home.path | default('/tmp') }}/repos/existing" }
+      - { enabled: true, name: 'localpath', dest: "{{ _git_test_home.path | default('/tmp') }}/repos/localpath" }
+  pre_tasks:
+    - name: Create isolated home for Git hook tests
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: ansible-role-git-hooks-
+      register: _git_test_home
+
+    - name: Create test repository directories
+      ansible.builtin.file:
+        path: "{{ _git_test_home.path }}/repos/{{ item }}"
+        state: directory
+        mode: "0750"
+      loop:
+        - clean
+        - precommit
+        - existing
+        - localpath
+
+    - name: Initialize test repositories
+      ansible.builtin.command:
+        argv: [git, init, --quiet]
+        chdir: "{{ _git_test_home.path }}/repos/{{ item }}"
+      loop:
+        - clean
+        - precommit
+        - existing
+        - localpath
+      changed_when: false
+
+    - name: Add a pre-commit hook to the precommit repository
+      ansible.builtin.copy:
+        dest: "{{ _git_test_home.path }}/repos/precommit/.git/hooks/pre-commit"
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          exit 0
+      changed_when: false
+
+    - name: Add an unmanaged commit-msg hook to the existing repository
+      ansible.builtin.copy:
+        dest: "{{ _git_test_home.path }}/repos/existing/.git/hooks/commit-msg"
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          # custom repository hook
+          exit 0
+      changed_when: false
+
+    - name: Create a local hooks directory for the localpath repository
+      ansible.builtin.file:
+        path: "{{ _git_test_home.path }}/localhooks"
+        state: directory
+        mode: "0750"
+
+    - name: Add a local hooks path hook
+      ansible.builtin.copy:
+        dest: "{{ _git_test_home.path }}/localhooks/commit-msg"
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          exit 0
+      changed_when: false
+
+    - name: Configure a local core.hooksPath
+      ansible.builtin.command:
+        argv:
+          - git
+          - -C
+          - "{{ _git_test_home.path }}/repos/localpath"
+          - config
+          - core.hooksPath
+          - "{{ _git_test_home.path }}/localhooks"
+      changed_when: false
+
+  roles:
+    - ansible-role-git
+
+  post_tasks:
+    - name: Read the configured Git template directory
+      ansible.builtin.command:
+        argv: [git, config, --global, --get, init.templateDir]
+      register: _git_test_template
+      changed_when: false
+
+    - name: Read the configured global hooks path
+      ansible.builtin.command:
+        argv: [git, config, --global, --get, core.hooksPath]
+      register: _git_test_hookspath
+      changed_when: false
+      failed_when: _git_test_hookspath.rc not in [0, 1]
+
+    - name: Check installed hooks and template
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ git_scripts_dir }}/commit_lint.py"
+        - "{{ git_hooks_template_dir }}/hooks/commit-msg"
+        - "{{ _git_test_home.path }}/repos/clean/.git/hooks/commit-msg"
+        - "{{ _git_test_home.path }}/repos/precommit/.git/hooks/pre-commit"
+        - "{{ _git_test_home.path }}/repos/precommit/.git/hooks/commit-msg"
+        - "{{ _git_test_home.path }}/repos/localpath/.git/hooks/commit-msg"
+      register: _git_test_hook_stats
+
+    - name: Read the unmanaged hook
+      ansible.builtin.slurp:
+        src: "{{ _git_test_home.path }}/repos/existing/.git/hooks/commit-msg"
+      register: _git_test_existing_hook
+
+    - name: Initialize a repository after the template was installed
+      ansible.builtin.command:
+        argv: [git, init, --quiet, "{{ _git_test_home.path }}/newrepo"]
+      changed_when: false
+
+    - name: Check the new repository hook
+      ansible.builtin.stat:
+        path: "{{ _git_test_home.path }}/newrepo/.git/hooks/commit-msg"
+      register: _git_test_new_hook
+
+    - name: Verify hook installation and no global hooks path
+      ansible.builtin.assert:
+        that:
+          - (_git_test_template.stdout | trim) == git_hooks_template_dir
+          - _git_test_hookspath.rc != 0
+          - _git_test_hook_stats.results[0].stat.exists
+          - _git_test_hook_stats.results[1].stat.exists
+          - _git_test_hook_stats.results[2].stat.exists
+          - _git_test_hook_stats.results[3].stat.exists
+          - _git_test_hook_stats.results[4].stat.exists
+          - not _git_test_hook_stats.results[5].stat.exists
+          - _git_test_new_hook.stat.exists
+          - "'Managed by ansible-role-git' not in (_git_test_existing_hook.content | b64decode)"
+
+    - name: Write a valid commit message
+      ansible.builtin.copy:
+        dest: "{{ _git_test_home.path }}/valid.txt"
+        mode: "0640"
+        content: |
+          feat: exercise the commit hook
+
+          Signed-off-by: Test User <test@example.com>
+          Assisted-by: OpenCode (test-model)
+      changed_when: false
+
+    - name: Write a commit message without the Assisted-by trailer
+      ansible.builtin.copy:
+        dest: "{{ _git_test_home.path }}/invalid.txt"
+        mode: "0640"
+        content: |
+          feat: exercise the commit hook
+
+          Signed-off-by: Test User <test@example.com>
+      changed_when: false
+
+    - name: Run the hook against the valid message
+      ansible.builtin.command:
+        argv:
+          - "{{ _git_test_home.path }}/repos/clean/.git/hooks/commit-msg"
+          - "{{ _git_test_home.path }}/valid.txt"
+        chdir: "{{ _git_test_home.path }}/repos/clean"
+      register: _git_test_valid
+      changed_when: false
+
+    - name: Run the hook against the invalid message
+      ansible.builtin.command:
+        argv:
+          - "{{ _git_test_home.path }}/repos/clean/.git/hooks/commit-msg"
+          - "{{ _git_test_home.path }}/invalid.txt"
+        chdir: "{{ _git_test_home.path }}/repos/clean"
+      register: _git_test_invalid
+      changed_when: false
+      failed_when: false
+
+    - name: Verify hook validation results
+      ansible.builtin.assert:
+        that:
+          - _git_test_valid.rc == 0
+          - _git_test_invalid.rc != 0
+
+    - name: Remove Git hook test home
+      ansible.builtin.file:
+        path: "{{ _git_test_home.path }}"
+        state: absent

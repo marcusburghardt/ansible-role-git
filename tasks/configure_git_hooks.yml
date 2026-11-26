@@ -1,0 +1,82 @@
+---
+- name: "{{ role_name }} | {{ task.name }} | Ensure Git hook template directory"
+  ansible.builtin.file:
+    path: "{{ git_hooks_template_dir }}/hooks"
+    state: directory
+    mode: "0750"
+
+- name: "{{ role_name }} | {{ task.name }} | Deploy commit-msg hook template"
+  ansible.builtin.template:
+    src: git-hooks/commit-msg.j2
+    dest: "{{ _git_hook_template_file }}"
+    mode: "0755"
+
+- name: "{{ role_name }} | {{ task.name }} | Validate conflict policy"
+  ansible.builtin.assert:
+    that:
+      - git_hooks_on_conflict in ['skip', 'fail']
+    fail_msg: "git_hooks_on_conflict must be 'skip' or 'fail'"
+
+- name: "{{ role_name }} | {{ task.name }} | Read global init.templateDir"
+  ansible.builtin.command:
+    argv:
+      - git
+      - config
+      - --global
+      - --get
+      - init.templateDir
+  register: _git_hook_template_current
+  changed_when: false
+  failed_when: _git_hook_template_current.rc not in [0, 1]
+
+- name: "{{ role_name }} | {{ task.name }} | Fail on a conflicting init.templateDir"
+  ansible.builtin.fail:
+    msg: >-
+      init.templateDir is already set to
+      {{ _git_hook_template_current.stdout | trim }}. Set
+      git_hooks_on_conflict to skip to leave it unchanged, or remove the
+      existing setting before installing the managed Git template.
+  when:
+    - git_hooks_enabled
+    - git_hooks_install_template
+    - _git_hook_template_current.rc == 0
+    - (_git_hook_template_current.stdout | trim) != git_hooks_template_dir
+    - git_hooks_on_conflict == 'fail'
+
+- name: "{{ role_name }} | {{ task.name }} | Report a skipped init.templateDir"
+  ansible.builtin.debug:
+    msg: >-
+      Leaving existing init.templateDir at
+      {{ _git_hook_template_current.stdout | trim }}; the managed template was
+      not enabled.
+  when:
+    - git_hooks_enabled
+    - git_hooks_install_template
+    - _git_hook_template_current.rc == 0
+    - (_git_hook_template_current.stdout | trim) != git_hooks_template_dir
+    - git_hooks_on_conflict == 'skip'
+
+- name: "{{ role_name }} | {{ task.name }} | Install the global Git template"
+  ansible.builtin.command:
+    argv:
+      - git
+      - config
+      - --global
+      - init.templateDir
+      - "{{ git_hooks_template_dir }}"
+  when:
+    - git_hooks_enabled
+    - git_hooks_install_template
+    - _git_hook_template_current.rc != 0
+  changed_when: true
+
+- name: "{{ role_name }} | {{ task.name }} | Install commit-msg hooks in managed repositories"
+  ansible.builtin.include_tasks:
+    file: configure_git_hook_repo.yml
+  loop: "{{ _git_hook_repo_paths }}"
+  loop_control:
+    loop_var: _git_hook_repo
+    label: "{{ _git_hook_repo }}"
+  when:
+    - git_hooks_enabled
+    - git_hooks_install_existing
