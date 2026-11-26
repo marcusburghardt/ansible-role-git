@@ -1,11 +1,4 @@
 ---
-- name: "{{ role_name }} | {{ task.name }} | Ensure Git related packages are installed"
-  become: true
-  ansible.builtin.package:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ packages }}"
-
 - name: "{{ role_name }} | {{ task.name }} | Ensure local Git settings"
   community.general.ini_file:
     path: "{{ user_git_file }}"

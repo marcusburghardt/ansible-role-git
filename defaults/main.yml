@@ -1,6 +1,7 @@
 ---
 # Role Defaults
 git_tasks:
+  - { enabled: true, name: 'install_packages' }
   - { enabled: true, name: 'configure_git' }
   - { enabled: true, name: 'configure_ps' }
   - { enabled: true, name: 'add_supporting_scripts' }
