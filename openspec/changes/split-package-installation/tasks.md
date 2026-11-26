@@ -29,21 +29,21 @@
 - [x] 2.3 Update every README example `git_tasks` list to include an explicit
       `install_packages` entry, disabled in the minimal example; verify the YAML
       blocks remain valid and internally consistent.
-- [ ] 2.4 Commit with a Conventional Commit subject plus a `BREAKING CHANGE:`
+- [x] 2.4 Commit with a Conventional Commit subject plus a `BREAKING CHANGE:`
       footer explaining that explicit `git_tasks` playbooks must add
       `install_packages`; verify with `git log -1 --format=%B`.
 
 ## 3. Integration verification
 
-- [ ] 3.1 Run the hook test playbook with
+- [x] 3.1 Run the hook test playbook with
       `ansible-playbook -i localhost, -c local tests/test_git_hooks.yml` and
       verify all assertions pass with `install_packages` disabled.
-- [ ] 3.2 Run a configuration-only play on a host where Git is already installed
+- [x] 3.2 Run a configuration-only play on a host where Git is already installed
       without `-K` and verify no privilege-escalation prompt appears.
-- [ ] 3.3 Run the role with the default `git_tasks` on a host missing a package
+- [x] 3.3 Run the role with the default `git_tasks` on a host missing a package
       and verify only `install_packages` requests escalation and package
       installation succeeds.
-- [ ] 3.4 Run `openspec validate split-package-installation --strict` and verify
+- [x] 3.4 Run `openspec validate split-package-installation --strict` and verify
       the change validates.
 
 ## Workflow follow-up
