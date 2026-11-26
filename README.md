@@ -10,6 +10,7 @@ This role will:
 - Configure user-level Git settings in `~/.gitconfig` via a data-driven variable;
 - Customize the PS1 prompt to show the current Git branch and working tree status;
 - Deploy supporting scripts for PR review workflows;
+- Deploy an opt-in `commit-msg` hook without replacing repository hooks;
 - Clone, update, and manage Git repositories with fork/upstream remote tracking;
 - Deploy a Git hints reference file to the base working directory.
 
@@ -59,6 +60,7 @@ git_tasks:
   - { enabled: true, name: 'configure_ps' }
   - { enabled: true, name: 'add_supporting_scripts' }
   - { enabled: true, name: 'synchronize_repos' }
+  - { enabled: true, name: 'configure_git_hooks' }
 ```
 
 | Task | Purpose |
@@ -67,6 +69,7 @@ git_tasks:
 | `configure_ps` | Customize PS1 prompt to show branch name and status |
 | `add_supporting_scripts` | Deploy helper scripts (e.g., `review_pr.py`) to `git_scripts_dir` |
 | `synchronize_repos` | Clone/update repositories, configure fork remotes, deploy hints file |
+| `configure_git_hooks` | Deploy the commit-msg hook template and install it in managed repositories |
 
 Set `enabled: false` on any task to skip it.
 
@@ -166,6 +169,39 @@ review_pr.py <pr_number> [--remote upstream] [--main-branch main] [--no-checkout
 The script creates a branch named `REVIEW_PR_<number>` (GitHub) or
 `REVIEW_MR_<number>` (GitLab) and checks it out. If the PR/MR was already
 fetched, it updates the branch via rebase.
+
+**`commit_lint.py`** -- Validates a Conventional Commit message, including
+subject/body length and required trailers:
+
+```bash
+commit_lint.py --file .git/COMMIT_EDITMSG [--require-assisted-by]
+```
+
+### Git Commit Hooks
+
+The `configure_git_hooks` task deploys a `commit-msg` hook template and can
+install it in new and existing repositories. It **never sets
+`core.hooksPath`**, so `pre-commit`, Husky, and existing repository hooks keep
+working.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `git_hooks_enabled` | `false` | Enable hook installation |
+| `git_hooks_install_template` | `true` | Set `init.templateDir` for new repositories |
+| `git_hooks_install_existing` | `false` | Install into enabled `git_repos` and `git_hooks_extra_repos` |
+| `git_hooks_require_signed_off_by` | `true` | Require the `Signed-off-by` trailer |
+| `git_hooks_require_assisted_by` | `false` | Require the `Assisted-by` trailer |
+| `git_hooks_on_conflict` | `skip` | Leave an existing hook or template setting unchanged (`skip` or `fail`) |
+| `git_hooks_dir` | `~/.config/git` | Base directory for the template |
+| `git_hooks_template_dir` | `{{ git_hooks_dir }}/template` | Git template directory |
+| `git_hooks_extra_repos` | `[]` | Additional repository paths to process |
+| `git_hooks_max_subject_length` | `72` | Maximum subject length |
+| `git_hooks_max_body_length` | `72` | Maximum body prose line length |
+
+When `git_hooks_install_existing` is enabled, the task installs the hook only if
+the repository exists, has no effective `core.hooksPath`, and has no unmanaged
+`commit-msg` hook. Existing hooks are never overwritten. Use
+`git_hooks_on_conflict: fail` to stop the play instead of skipping.
 
 Dependencies
 ------------

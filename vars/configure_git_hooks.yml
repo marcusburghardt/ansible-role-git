@@ -1,0 +1,18 @@
+---
+# Task-specific variables for configure_git_hooks.
+
+# Enabled repositories from git_repos plus explicitly listed extra repositories.
+# Relative destinations resolve under git_base_dir, matching synchronize_repos.
+_git_hook_repo_paths: >-
+  {{ (git_repos | selectattr('enabled') | map(attribute='dest') | list
+      + git_hooks_extra_repos)
+     | map('regex_replace', '^~', ansible_facts['user_dir'])
+     | map('regex_replace', '^(?![~/])', git_base_dir + '/')
+     | unique
+     | list }}
+
+# Deployed hook that is copied into repositories and used by the Git template.
+_git_hook_template_file: "{{ git_hooks_template_dir }}/hooks/commit-msg"
+
+# Marker used to recognize hooks previously installed by this role.
+_git_hook_marker: "Managed by ansible-role-git"
