@@ -15,6 +15,7 @@
     git_hooks_template_dir: "{{ git_hooks_dir }}/template"
     git_scripts_dir: "{{ _git_test_home.path | default('/tmp') }}/bin"
     git_tasks:
+      - { enabled: false, name: 'install_packages' }
       - { enabled: false, name: 'configure_git' }
       - { enabled: false, name: 'configure_ps' }
       - { enabled: true, name: 'add_supporting_scripts' }

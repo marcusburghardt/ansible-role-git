@@ -6,7 +6,8 @@ Fedora systems. Settings are customizable through variables defined in
 `defaults/main.yml` or overridden in your playbook.
 
 This role will:
-- Install Git, GitHub CLI (`gh`), and GitLab CLI (`glab`);
+- Install Git, GitHub CLI (`gh`), and GitLab CLI (`glab`) as an independent,
+  opt-out task;
 - Configure user-level Git settings in `~/.gitconfig` via a data-driven variable;
 - Customize the PS1 prompt to show the current Git branch and working tree status;
 - Deploy supporting scripts for PR review workflows;
@@ -39,7 +40,7 @@ Role Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `git_tasks` | List of tasks to run (see [Task Selection](#task-selection)) | All 4 tasks enabled |
+| `git_tasks` | List of tasks to run (see [Task Selection](#task-selection)) | All 6 tasks enabled |
 | `git_base_dir` | Base directory for all Git repositories | `~/GIT` |
 | `git_scripts_dir` | Directory for supporting scripts | `~/bin` |
 | `git_username` | Git user name for commits | `'Name Surname'` |
@@ -56,6 +57,7 @@ disabled via the `git_tasks` variable:
 
 ```yaml
 git_tasks:
+  - { enabled: true, name: 'install_packages' }
   - { enabled: true, name: 'configure_git' }
   - { enabled: true, name: 'configure_ps' }
   - { enabled: true, name: 'add_supporting_scripts' }
@@ -65,13 +67,20 @@ git_tasks:
 
 | Task | Purpose |
 |------|---------|
-| `configure_git` | Install Git packages and apply `~/.gitconfig` settings |
+| `install_packages` | Install Git, GitHub CLI (`gh`), and GitLab CLI (`glab`); the only task requiring privilege escalation |
+| `configure_git` | Apply `~/.gitconfig` settings as the current user |
 | `configure_ps` | Customize PS1 prompt to show branch name and status |
 | `add_supporting_scripts` | Deploy helper scripts (e.g., `review_pr.py`) to `git_scripts_dir` |
 | `synchronize_repos` | Clone/update repositories, configure fork remotes, deploy hints file |
 | `configure_git_hooks` | Deploy the commit-msg hook template and install it in managed repositories |
 
 Set `enabled: false` on any task to skip it.
+
+`install_packages` is the only task that uses `become`, so running the role
+without it needs no sudo password. A default run installs packages first, before
+tasks that invoke the `git` binary. When you override `git_tasks` with an
+explicit list, tasks omitted from that list are not applied — including package
+installation.
 
 ### Git Configuration
 
@@ -220,6 +229,7 @@ Example Playbook
     git_username: 'Jane Doe'
     git_email: 'jane@example.com'
     git_tasks:
+      - { enabled: false, name: 'install_packages' }
       - { enabled: true, name: 'configure_git' }
       - { enabled: true, name: 'configure_ps' }
       - { enabled: false, name: 'add_supporting_scripts' }
@@ -248,6 +258,13 @@ Example Playbook
           dest: 'Team/shared-tools',
           remote: false,
           remote_name: 'upstream' }
+    git_tasks:
+      - { enabled: true, name: 'install_packages' }
+      - { enabled: true, name: 'configure_git' }
+      - { enabled: true, name: 'configure_ps' }
+      - { enabled: true, name: 'add_supporting_scripts' }
+      - { enabled: true, name: 'synchronize_repos' }
+      - { enabled: true, name: 'configure_git_hooks' }
   roles:
     - marcusburghardt.git
 ```
@@ -270,6 +287,7 @@ Example Playbook
       - { enabled: true, state: 'present', section: 'commit', parameter: 'gpgSign', value: 'true' }
       - { enabled: true, state: 'present', section: 'pull', parameter: 'rebase', value: 'true' }
     git_tasks:
+      - { enabled: false, name: 'install_packages' }
       - { enabled: true, name: 'configure_git' }
       - { enabled: false, name: 'configure_ps' }
       - { enabled: false, name: 'add_supporting_scripts' }
@@ -292,6 +310,7 @@ Example Playbook
           remote: false,
           remote_name: 'upstream' }
     git_tasks:
+      - { enabled: false, name: 'install_packages' }
       - { enabled: false, name: 'configure_git' }
       - { enabled: false, name: 'configure_ps' }
       - { enabled: false, name: 'add_supporting_scripts' }

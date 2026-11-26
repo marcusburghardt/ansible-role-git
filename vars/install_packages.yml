@@ -1,0 +1,4 @@
+---
+# This file has variables specific for the install_packages task.
+# The OS-specific package list lives in the platform vars file, for example
+# `vars/redhat.yml` on Red Hat Enterprise Linux and Fedora.

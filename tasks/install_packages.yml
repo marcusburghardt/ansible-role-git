@@ -1,0 +1,8 @@
+---
+- name: "{{ role_name }} | {{ task.name }} | Ensure Git related packages are installed"
+  become: true
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages }}"
+...
