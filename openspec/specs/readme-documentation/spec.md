@@ -12,11 +12,11 @@ The README SHALL use the role name `marcusburghardt.git` as the title with RST-s
 - **THEN** they understand the role installs and configures Git, customizes the shell prompt, manages repositories, and deploys supporting scripts
 
 ### Requirement: Complete feature list
-The README SHALL include a bullet list of all features the role provides, covering all 4 tasks: configure_git, configure_ps, add_supporting_scripts, and synchronize_repos.
+The README SHALL include a bullet list of all features the role provides, covering all six tasks: install_packages, configure_git, configure_ps, add_supporting_scripts, synchronize_repos, and configure_git_hooks.
 
 #### Scenario: All tasks represented
 - **WHEN** a user reads the feature list
-- **THEN** they see entries for Git installation and configuration, PS1 prompt customization, supporting script deployment, and repository synchronization with fork/upstream management
+- **THEN** they see entries for independent package installation, user-level Git configuration, PS1 prompt customization, supporting script deployment, repository synchronization with fork/upstream management, and commit-message hook management
 
 ### Requirement: Accurate requirements section
 The README SHALL document all prerequisites including Python 3, the `community.general` Ansible collection, and the target platform limitations (EL and Fedora).
@@ -37,11 +37,19 @@ The README SHALL include a Markdown table listing all user-facing variables from
 - **THEN** every variable defined in `defaults/main.yml` appears with its default value and a description of its purpose
 
 ### Requirement: Task selection documentation
-The README SHALL explain the task dispatcher pattern (`git_tasks`) including how to enable or disable individual tasks, and list all available tasks with their names and purposes.
+The README SHALL explain the task dispatcher pattern (`git_tasks`) including how to enable or disable individual tasks, list all available tasks with their names and purposes, and identify `install_packages` as the only task requiring privilege escalation.
 
 #### Scenario: User understands task control
 - **WHEN** a user reads the task selection section
 - **THEN** they understand how to set `enabled: true/false` for each task in the `git_tasks` list to control which features are applied
+
+#### Scenario: User understands the privilege boundary
+- **WHEN** a user wants to apply only user-level Git configuration without a sudo password
+- **THEN** they understand that disabling `install_packages` removes the only privileged step from the role
+
+#### Scenario: User is warned about explicit overrides
+- **WHEN** a user supplies an explicit `git_tasks` list
+- **THEN** they understand that tasks omitted from the list are not applied, including package installation
 
 ### Requirement: Git configuration documentation
 The README SHALL explain the data-driven `git_user_config` variable, including the structure of each entry (enabled, state, section, parameter, value) and how to add custom gitconfig entries.
@@ -65,15 +73,15 @@ The README SHALL document the `add_supporting_scripts` task, the `review_pr.py` 
 - **THEN** they understand the script creates a local review branch from an upstream PR and know its CLI arguments
 
 ### Requirement: Progressive example playbooks
-The README SHALL include at least 4 example playbooks ordered from minimal to complex, each with a bold label and a fenced YAML code block.
+The README SHALL include at least 4 example playbooks ordered from minimal to complex, each with a bold label and a fenced YAML code block, and each showing an explicit `install_packages` entry in its `git_tasks` list.
 
 #### Scenario: Minimal example
 - **WHEN** a user wants basic Git configuration
-- **THEN** they find an example that only enables `configure_git` and `configure_ps`
+- **THEN** they find an example that enables `configure_git` and `configure_ps` with `install_packages` disabled
 
 #### Scenario: Full setup example
 - **WHEN** a user wants all features
-- **THEN** they find an example enabling all 4 tasks with repository definitions and custom git config
+- **THEN** they find an example enabling all six tasks, including `install_packages`, with repository definitions and custom git config
 
 #### Scenario: Fork management example
 - **WHEN** a user manages forked repositories
