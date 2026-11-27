@@ -392,8 +392,10 @@ This project uses [release-please](https://github.com/googleapis/release-please)
 for automated versioning and changelog generation. Commits to `main` must follow
 the [Conventional Commits](https://www.conventionalcommits.org/) specification.
 
-When a release PR is merged, a GitHub Release is created automatically, which
-triggers publishing to Ansible Galaxy.
+When a release PR is merged, a GitHub Release is created automatically and the
+role is published to Ansible Galaxy in the same workflow run. The separate
+`ci_galaxy_publish.yml` workflow remains as a fallback for manually published or
+re-published releases.
 
 **Note:** The `GALAXY_API_KEY` repository secret must be configured for Galaxy
 publishing to work.
