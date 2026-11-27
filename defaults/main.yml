@@ -46,6 +46,24 @@ git_hooks_extra_repos: []
 git_hooks_max_subject_length: 72
 git_hooks_max_body_length: 72
 
+# Repository synchronization behavior.
+# dirty_action controls repositories with uncommitted changes to tracked files:
+#   stash - stash the changes before updating and restore them afterwards
+#   skip  - leave the repository untouched
+#   fail  - report the repository as a problem without touching it
+git_repos_dirty_action: stash
+
+# Remediation text included in the synchronization summary for authentication
+# failures. Override it in your inventory to match your forge.
+git_repos_auth_hint: >-
+  Refresh the forge credentials for the remote host. The token needs permission
+  to read repository contents (GitLab: read_repository, GitHub: Contents: Read).
+  Run `glab auth login --hostname <host>` or `gh auth login`, or switch the
+  repository URL to SSH.
+
+# Number of changed file paths listed for a dirty repository in the summary.
+git_repos_summary_max_file_samples: 5
+
 git_repos:
   - { enabled: false, name: 'Project(fork)->Project',
       repo: 'https://github.com/mygithubid/project.git',

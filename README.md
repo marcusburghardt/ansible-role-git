@@ -49,6 +49,9 @@ Role Variables
 | `git_autocrlf` | Line ending conversion setting | `'input'` |
 | `git_user_config` | Data-driven list of gitconfig entries (see [Git Configuration](#git-configuration)) | 6 default entries |
 | `git_repos` | List of repositories to clone and manage (see [Repository Synchronization](#repository-synchronization)) | 2 disabled examples |
+| `git_repos_dirty_action` | How to handle repositories with uncommitted changes to tracked files (`stash`, `skip`, or `fail`) | `stash` |
+| `git_repos_auth_hint` | Remediation text printed for authentication failures in the summary | Generic token and SSH guidance |
+| `git_repos_summary_max_file_samples` | Changed file paths listed per dirty repository in the summary | `5` |
 
 ### Task Selection
 
@@ -149,7 +152,58 @@ Each entry has the following fields:
 
 Repositories are cloned into `git_base_dir/<dest>`. When `remote` is set to a URL,
 the role configures an additional remote so you can fetch upstream changes with
-`git fetch upstream`.
+`git fetch upstream`. The remote is corrected if the URL drifts, and a repeated
+run reports no change.
+
+#### Update behavior
+
+Each run prints one line per repository. Repositories with uncommitted changes
+to tracked files follow `git_repos_dirty_action`:
+
+| Value | Behavior |
+|-------|----------|
+| `stash` (default) | Stash the changes, update the repository, then reapply them |
+| `skip` | Leave the repository untouched and report it as skipped |
+| `fail` | Report the repository as needing attention without touching it |
+
+Repositories checked out on a local branch that has no `origin/<branch>`
+reference (for example a review branch created by `review_pr.py`) are left
+untouched and reported as skipped. Untracked files do not make a worktree dirty
+for this decision. Changes that Git cannot stash, such as uncommitted content
+inside a submodule, also leave the repository untouched and are reported under
+`dirty` with an explanation.
+
+If reapplying a stash conflicts with the updated tree, the role keeps the stash
+entry instead of dropping it and reports the conflict. Recover with:
+
+```
+git -C <repository> stash list    # find the "ansible-role-git pre-sync" entry
+git -C <repository> status        # resolve the conflicted files
+git -C <repository> stash pop     # reapply once the conflict is resolved
+```
+
+#### Summary output
+
+The task ends with one grouped summary instead of one error block per
+repository:
+
+```
+Repository sync: 43 enabled | 40 updated | 1 up to date | 0 skipped | 2 need attention
+
+Needs attention:
+[auth] 2 repositories
+  - gemara-dev (ProdSec/internal/gemara-dev)
+    remote: https://***@gitlab.example.com/team/gemara-dev.git
+    fatal: unable to access '...': The requested URL returned error: 403
+    fix: <remediation from git_repos_auth_hint>
+```
+
+Results are bucketed as `updated`, `up to date`, `skipped`, and
+`need attention`. Problems are grouped as `auth`, `network`, `dirty`, `branch`,
+`stash-conflict`, or `other`, and each group prints one remediation hint.
+Credentials embedded in repository URLs are redacted. The role never fails the
+play when a repository cannot be synchronized; the summary is the reporting
+surface, so a run that completes with problems still exits successfully.
 
 The task also deploys a `GIT_HINTS.md` reference file to `git_base_dir` with
 tips on authentication, branching, rebasing, and troubleshooting.

@@ -1,0 +1,416 @@
+---
+- name: Verify repository synchronization behavior
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    _sync_test_root: "{{ lookup('env', 'TMPDIR') | default('/tmp', true) }}/ansible-role-git-sync-test"
+    _sync_remotes: "{{ _sync_test_root }}/remotes"
+    _sync_work: "{{ _sync_test_root }}/work"
+    git_base_dir: "{{ _sync_work }}"
+    git_repos:
+      - { enabled: true, name: 'clean', repo: "{{ _sync_remotes }}/clean.git",
+          dest: 'clean', remote: false, remote_name: 'upstream' }
+      - { enabled: true, name: 'dirty', repo: "{{ _sync_remotes }}/clean.git",
+          dest: 'dirty', remote: false, remote_name: 'upstream' }
+      - { enabled: true, name: 'conflict', repo: "{{ _sync_remotes }}/clean.git",
+          dest: 'conflict', remote: false, remote_name: 'upstream' }
+      - { enabled: true, name: 'localbranch', repo: "{{ _sync_remotes }}/clean.git",
+          dest: 'localbranch', remote: false, remote_name: 'upstream' }
+      - { enabled: true, name: 'drift', repo: "{{ _sync_remotes }}/clean.git",
+          dest: 'drift', remote: 'https://example.invalid/right.git',
+          remote_name: 'upstream' }
+      - { enabled: true, name: 'submodule', repo: "{{ _sync_remotes }}/clean.git",
+          dest: 'submodule', remote: false, remote_name: 'upstream' }
+      - { enabled: true, name: 'unreachable',
+          repo: 'https://user:secret@127.0.0.1:9/unreachable.git',
+          dest: 'unreachable', remote: false, remote_name: 'upstream' }
+      - { enabled: false, name: 'disabled', repo: "{{ _sync_remotes }}/clean.git",
+          dest: 'disabled', remote: false, remote_name: 'upstream' }
+    _sync_clean_repos:
+      - { enabled: true, name: 'clean', repo: "{{ _sync_remotes }}/clean.git",
+          dest: 'clean', remote: false, remote_name: 'upstream' }
+      - { enabled: true, name: 'drift', repo: "{{ _sync_remotes }}/clean.git",
+          dest: 'drift', remote: 'https://example.invalid/right.git',
+          remote_name: 'upstream' }
+    git_tasks:
+      - { enabled: false, name: 'install_packages' }
+      - { enabled: false, name: 'configure_git' }
+      - { enabled: false, name: 'configure_ps' }
+      - { enabled: false, name: 'add_supporting_scripts' }
+      - { enabled: true, name: 'synchronize_repos' }
+      - { enabled: false, name: 'configure_git_hooks' }
+
+  pre_tasks:
+    - name: Remove previous test fixtures
+      ansible.builtin.file:
+        path: "{{ _sync_test_root }}"
+        state: absent
+
+    - name: Create fixture directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0750'
+      loop:
+        - "{{ _sync_remotes }}"
+        - "{{ _sync_work }}"
+        - "{{ _sync_test_root }}/seed"
+
+    - name: Initialize the seed repository
+      ansible.builtin.command:
+        argv: [git, init, --quiet, --initial-branch=main]
+        chdir: "{{ _sync_test_root }}/seed"
+
+    - name: Write the seed files
+      ansible.builtin.copy:
+        dest: "{{ _sync_test_root }}/seed/{{ item.name }}"
+        mode: '0640'
+        content: "{{ item.content }}"
+      loop:
+        - { name: 'README.md', content: "line one\n" }
+        - { name: 'notes.txt', content: "notes\n" }
+
+    - name: Stage the seed files
+      ansible.builtin.command:
+        argv:
+          - git
+          - -C
+          - "{{ _sync_test_root }}/seed"
+          - add
+          - README.md
+          - notes.txt
+      changed_when: false
+
+    - name: Commit the seed files
+      ansible.builtin.command:
+        argv:
+          - git
+          - -C
+          - "{{ _sync_test_root }}/seed"
+          - -c
+          - user.name=Test User
+          - -c
+          - user.email=test@example.com
+          - commit
+          - --no-verify
+          - --quiet
+          - --message
+          - 'chore: seed'
+      changed_when: false
+
+    - name: Create the bare remote
+      ansible.builtin.command:
+        argv:
+          - git
+          - clone
+          - --quiet
+          - --bare
+          - "{{ _sync_test_root }}/seed"
+          - "{{ _sync_remotes }}/clean.git"
+      changed_when: false
+
+    - name: Create the submodule seed repository
+      ansible.builtin.file:
+        path: "{{ _sync_test_root }}/subseed"
+        state: directory
+        mode: '0750'
+
+    - name: Initialize the submodule seed repository
+      ansible.builtin.command:
+        argv: [git, init, --quiet, --initial-branch=main]
+        chdir: "{{ _sync_test_root }}/subseed"
+
+    - name: Write the submodule seed file
+      ansible.builtin.copy:
+        dest: "{{ _sync_test_root }}/subseed/file.txt"
+        mode: '0640'
+        content: "sub one\n"
+
+    - name: Stage the submodule seed file
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_test_root }}/subseed", add, file.txt]
+      changed_when: false
+
+    - name: Commit the submodule seed file
+      ansible.builtin.command:
+        argv:
+          - git
+          - -C
+          - "{{ _sync_test_root }}/subseed"
+          - -c
+          - user.name=Test User
+          - -c
+          - user.email=test@example.com
+          - commit
+          - --no-verify
+          - --quiet
+          - --all
+          - --message
+          - 'chore: subseed'
+      changed_when: false
+
+    - name: Clone the local fixtures before the upstream change
+      ansible.builtin.command:
+        argv:
+          - git
+          - clone
+          - --quiet
+          - "{{ _sync_remotes }}/clean.git"
+          - "{{ _sync_work }}/{{ item }}"
+      loop: [dirty, conflict, localbranch, drift, submodule]
+      changed_when: false
+
+    - name: Add a submodule to the submodule fixture
+      ansible.builtin.command:
+        argv:
+          - git
+          - -C
+          - "{{ _sync_work }}/submodule"
+          - -c
+          - protocol.file.allow=always
+          - submodule
+          - add
+          - "{{ _sync_test_root }}/subseed"
+          - deps/sub
+      changed_when: false
+
+    - name: Commit the submodule fixture
+      ansible.builtin.command:
+        argv:
+          - git
+          - -C
+          - "{{ _sync_work }}/submodule"
+          - -c
+          - user.name=Test User
+          - -c
+          - user.email=test@example.com
+          - commit
+          - --no-verify
+          - --quiet
+          - --all
+          - --message
+          - 'chore: add submodule'
+      changed_when: false
+
+    - name: Create dirty content inside the submodule fixture
+      ansible.builtin.copy:
+        dest: "{{ _sync_work }}/submodule/deps/sub/file.txt"
+        mode: '0640'
+        content: "sub dirty\n"
+
+    - name: Create a tracked local edit in the dirty fixture
+      ansible.builtin.copy:
+        dest: "{{ _sync_work }}/dirty/notes.txt"
+        mode: '0640'
+        content: "local dirty edit\n"
+
+    - name: Create a conflicting local edit in the conflict fixture
+      ansible.builtin.copy:
+        dest: "{{ _sync_work }}/conflict/README.md"
+        mode: '0640'
+        content: "local conflict edit\n"
+
+    - name: Create a local-only branch in the localbranch fixture
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_work }}/localbranch", switch, --quiet, -c, REVIEW_MR_9]
+      changed_when: false
+
+    - name: Configure a drifted upstream URL in the drift fixture
+      ansible.builtin.command:
+        argv:
+          - git
+          - -C
+          - "{{ _sync_work }}/drift"
+          - remote
+          - add
+          - upstream
+          - https://example.invalid/wrong.git
+      changed_when: false
+
+    - name: Clone the upstream working copy
+      ansible.builtin.command:
+        argv:
+          - git
+          - clone
+          - --quiet
+          - "{{ _sync_remotes }}/clean.git"
+          - "{{ _sync_test_root }}/upstream"
+      changed_when: false
+
+    - name: Change the upstream file
+      ansible.builtin.copy:
+        dest: "{{ _sync_test_root }}/upstream/README.md"
+        mode: '0640'
+        content: "upstream change\n"
+
+    - name: Commit and push the upstream change
+      ansible.builtin.command:
+        argv:
+          - git
+          - -C
+          - "{{ _sync_test_root }}/upstream"
+          - -c
+          - user.name=Test User
+          - -c
+          - user.email=test@example.com
+          - commit
+          - --no-verify
+          - --quiet
+          - --all
+          - --message
+          - 'fix: upstream change'
+      changed_when: false
+
+    - name: Publish the upstream change
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_test_root }}/upstream", push, --quiet, origin, main]
+      changed_when: false
+
+  tasks:
+    - name: Run the role
+      ansible.builtin.include_role:
+        name: ansible-role-git
+
+    - name: Capture the first-run results
+      ansible.builtin.set_fact:
+        _sync_first_update: "{{ result_git_update.results }}"
+        _sync_first_summary: "{{ _git_repo_summary | default('') }}"
+        _sync_first_skips: "{{ _git_repo_skips }}"
+
+    - name: Read the remote and cloned heads
+      ansible.builtin.command:
+        argv: [git, -C, "{{ item }}", rev-parse, HEAD]
+      loop:
+        - "{{ _sync_remotes }}/clean.git"
+        - "{{ _sync_work }}/clean"
+      register: _sync_heads
+      changed_when: false
+
+    - name: Read the dirty fixture
+      ansible.builtin.slurp:
+        src: "{{ _sync_work }}/dirty/notes.txt"
+      register: _sync_dirty_notes
+
+    - name: Read the dirty fixture stash
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_work }}/dirty", stash, list]
+      register: _sync_dirty_stash
+      changed_when: false
+
+    - name: Read the conflict fixture state
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_work }}/conflict", status, --porcelain]
+      register: _sync_conflict_status
+      changed_when: false
+
+    - name: Read the conflict fixture stash
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_work }}/conflict", stash, list]
+      register: _sync_conflict_stash
+      changed_when: false
+
+    - name: Read the localbranch fixture
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_work }}/localbranch", rev-parse, --abbrev-ref, HEAD]
+      register: _sync_localbranch_head
+      changed_when: false
+
+    - name: Read the localbranch fixture file
+      ansible.builtin.slurp:
+        src: "{{ _sync_work }}/localbranch/README.md"
+      register: _sync_localbranch_readme
+
+    - name: Read the drift fixture upstream URL
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_work }}/drift", config, remote.upstream.url]
+      register: _sync_drift_url
+      changed_when: false
+
+    - name: Read the submodule fixture state
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_work }}/submodule", status, --porcelain]
+      register: _sync_submodule_status
+      changed_when: false
+
+    - name: Read the submodule fixture stash
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_work }}/submodule", stash, list]
+      register: _sync_submodule_stash
+      changed_when: false
+
+    - name: Check the disabled fixture
+      ansible.builtin.stat:
+        path: "{{ _sync_work }}/disabled"
+      register: _sync_disabled
+
+    - name: Verify the first-run behavior
+      ansible.builtin.assert:
+        that:
+          - _sync_heads.results[0].stdout == _sync_heads.results[1].stdout
+          - _sync_dirty_notes.content | b64decode == "local dirty edit\n"
+          - _sync_dirty_stash.stdout == ''
+          - _sync_conflict_stash.stdout_lines | length == 1
+          - "'UU' in _sync_conflict_status.stdout or 'AA' in _sync_conflict_status.stdout"
+          - _sync_localbranch_head.stdout == 'REVIEW_MR_9'
+          - _sync_localbranch_readme.content | b64decode == "line one\n"
+          - _sync_drift_url.stdout == 'https://example.invalid/right.git'
+          - "'M deps/sub' in _sync_submodule_status.stdout"
+          - _sync_submodule_stash.stdout == ''
+          - not _sync_disabled.stat.exists
+          - _sync_first_skips | selectattr('reason', 'equalto', 'branch') | list | length == 1
+          - _sync_first_update | selectattr('msg', 'defined') | map(attribute='item.name') | list == ['unreachable']
+          - "'Needs attention' in _sync_first_summary"
+          - "'[network]' in _sync_first_summary"
+          - "'[dirty]' in _sync_first_summary"
+          - "'dirty submodule' in _sync_first_summary"
+          - "'No stash entries found' not in _sync_first_summary"
+          - "'[stash-conflict]' in _sync_first_summary"
+          - "'Skipped:' in _sync_first_summary"
+          - "'localbranch' in _sync_first_summary"
+          - "'secret' not in _sync_first_summary"
+          - "'://***@' in _sync_first_summary"
+
+    - name: Resolve the conflicted fixture before the second run
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_work }}/conflict", reset, --hard]
+      changed_when: false
+
+    - name: Drop the retained stash before the second run
+      ansible.builtin.command:
+        argv: [git, -C, "{{ _sync_work }}/conflict", stash, drop]
+      changed_when: false
+
+    - name: Run the role again
+      ansible.builtin.include_role:
+        name: ansible-role-git
+
+    - name: Verify the second run is idempotent
+      ansible.builtin.assert:
+        that:
+          - result_git_update.results | rejectattr('skipped', 'defined')
+            | rejectattr('msg', 'defined') | selectattr('changed') | list | length == 0
+          - result_git_update.results | selectattr('msg', 'defined') | list | length == 1
+          - result_git_restore.results | rejectattr('skipped', 'defined')
+            | selectattr('rc', 'defined') | selectattr('rc', 'ne', 0) | list | length == 0
+
+    - name: Run the role with only synchronizable repositories
+      ansible.builtin.include_role:
+        name: ansible-role-git
+      vars:
+        git_repos: "{{ _sync_clean_repos }}"
+
+    - name: Verify a clean run reports no problems
+      ansible.builtin.assert:
+        that:
+          - "'Needs attention' not in _git_repo_summary"
+          - "'Skipped:' not in _git_repo_summary"
+          - "'0 need attention' in _git_repo_summary"
+          - result_git_update.results | selectattr('changed') | list | length == 0
+
+  post_tasks:
+    - name: Remove the test fixtures
+      ansible.builtin.file:
+        path: "{{ _sync_test_root }}"
+        state: absent

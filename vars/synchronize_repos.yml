@@ -1,3 +1,48 @@
 ---
-# This file has the custom variables for synchronize_repos task.
-...
+# Constants for the synchronize_repos task.
+
+# Ordered problem classification. The first entry whose pattern matches the Git
+# module message wins, so the catch-all `other` entry must remain last.
+git_repo_error_signatures:
+  - category: auth
+    patterns:
+      - 'Access denied'
+      - 'Authentication failed'
+      - 'could not read Username'
+      - 'Invalid username or password'
+      - 'returned error: 40[13]'
+      - 'Permission denied \(publickey\)'
+    hint: "{{ git_repos_auth_hint }}"
+  - category: network
+    patterns:
+      - 'Could not resolve host'
+      - 'Connection timed out'
+      - 'Connection refused'
+      - 'Network is unreachable'
+      - 'Failed to connect'
+    hint: >-
+      Check connectivity and DNS for the remote host, then re-run the role.
+  - category: branch
+    patterns:
+      - 'Failed to checkout branch'
+      - 'not found in upstream'
+    hint: >-
+      The repository is on a local branch without an origin counterpart, such
+      as a review branch. Check out a tracked branch to let the role update it.
+  - category: dirty
+    patterns:
+      - 'Local modifications exist'
+    hint: >-
+      Commit or stash the local changes, or set git_repos_dirty_action to stash.
+  - category: other
+    patterns:
+      - '.*'
+    hint: >-
+      Inspect the repository manually with git status and git fetch.
+
+# Buckets rendered by templates/synchronize_repos_summary.j2, in output order.
+git_repo_summary_buckets:
+  - { key: 'updated', title: 'Updated' }
+  - { key: 'ok', title: 'Up to date' }
+  - { key: 'skipped', title: 'Skipped' }
+  - { key: 'problem', title: 'Needs attention' }

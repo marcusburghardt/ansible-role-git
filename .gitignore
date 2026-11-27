@@ -22,3 +22,7 @@
 
 # Agent-specific files (local only)
 CLAUDE.md
+
+# Python bytecode (action plugin compilation)
+__pycache__/
+*.py[cod]
