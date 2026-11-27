@@ -6,54 +6,217 @@
     mode: '0750'
   register: result_git_base_dir
 
+- name: "{{ role_name }} | {{ task.name }} | Select the enabled Git repositories"
+  ansible.builtin.set_fact:
+    _git_repos_enabled: >-
+      {{ git_repos | selectattr('enabled', 'defined') | selectattr('enabled') | list }}
+    _git_repo_states: {}
+    _git_repo_skips: []
+
+- name: "{{ role_name }} | {{ task.name }} | Inspect the working tree of each repository"
+  ansible.builtin.command:
+    argv:
+      - git
+      - -C
+      - "{{ git_base_dir }}/{{ item.dest }}"
+      - status
+      - --porcelain
+      - --branch
+  loop: "{{ _git_repos_enabled }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: result_git_state
+  changed_when: false
+  failed_when: false
+
+- name: "{{ role_name }} | {{ task.name }} | Record the working tree state"
+  ansible.builtin.set_fact:
+    _git_repo_states: >-
+      {{ _git_repo_states | default({}) | combine({ item.item.dest: state }) }}
+  vars:
+    branch_line: >-
+      {{ item.stdout_lines | default([]) | select('match', '^## ') | first | default('') }}
+    state:
+      exists: "{{ item.rc == 0 }}"
+      branch: >-
+        {{ '' if 'HEAD (no branch)' in branch_line
+           else branch_line | regex_replace('^## ', '') | regex_replace('\.\.\..*$', '') }}
+      upstream: >-
+        {{ '' if '...' not in branch_line
+           else branch_line | regex_replace('^.*\.\.\.', '') | regex_replace(' .*$', '') }}
+      changed_files: >-
+        {{ item.stdout_lines | default([])
+           | reject('match', '^## ') | reject('match', '^\?\? ')
+           | map('regex_replace', '^.{3}', '') | list }}
+      origin_has_branch: true
+  loop: "{{ result_git_state.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+- name: "{{ role_name }} | {{ task.name }} | Select repositories with an untracked local branch"
+  ansible.builtin.set_fact:
+    _git_repos_origin_check: >-
+      {{ result_git_state.results
+         | selectattr('rc', 'equalto', 0)
+         | selectattr('item.dest', 'in', _git_repo_no_upstream_dests)
+         | map(attribute='item') | list }}
+  vars:
+    _git_repo_no_upstream_dests: >-
+      {{ _git_repo_states | dict2items
+         | selectattr('value.exists')
+         | rejectattr('value.branch', 'equalto', '')
+         | rejectattr('value.upstream', 'ne', '')
+         | map(attribute='key') | list }}
+
+- name: "{{ role_name }} | {{ task.name }} | Check whether the untracked local branches exist on origin"
+  ansible.builtin.command:
+    argv:
+      - git
+      - -C
+      - "{{ git_base_dir }}/{{ item.dest }}"
+      - rev-parse
+      - --verify
+      - --quiet
+      - "refs/remotes/origin/{{ _git_repo_states[item.dest].branch }}"
+  loop: "{{ _git_repos_origin_check }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: result_git_origin_check
+  changed_when: false
+  failed_when: false
+
+- name: "{{ role_name }} | {{ task.name }} | Record whether the local branches exist on origin"
+  ansible.builtin.set_fact:
+    _git_repo_states: >-
+      {{ _git_repo_states | combine({ item.item.dest: _git_repo_states[item.item.dest]
+         | combine({'origin_has_branch': item.rc == 0}) }) }}
+  loop: "{{ result_git_origin_check.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+- name: "{{ role_name }} | {{ task.name }} | Stash local changes before updating"
+  ansible.builtin.command:
+    argv:
+      - git
+      - -C
+      - "{{ git_base_dir }}/{{ item.dest }}"
+      - stash
+      - push
+      - --message
+      - "ansible-role-git pre-sync"
+  environment:
+    LC_ALL: C
+  loop: "{{ _git_repos_enabled }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: result_git_stash
+  failed_when: false
+  when:
+    - git_repos_dirty_action == 'stash'
+    - _git_repo_states[item.dest].exists
+    - _git_repo_states[item.dest].changed_files | length > 0
+    - _git_repo_states[item.dest].branch | length == 0
+      or _git_repo_states[item.dest].origin_has_branch
+
+- name: "{{ role_name }} | {{ task.name }} | Record repositories whose changes cannot be stashed"
+  ansible.builtin.set_fact:
+    _git_repo_unstashable_dests: >-
+      {{ result_git_stash.results | default([])
+         | rejectattr('skipped', 'defined')
+         | selectattr('rc', 'defined') | selectattr('rc', 'equalto', 0)
+         | selectattr('stdout', 'search', 'No local changes to save')
+         | map(attribute='item.dest') | list }}
+
 - name: "{{ role_name }} | {{ task.name }} | Ensure the Git repositories are updated"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
     dest: "{{ git_base_dir }}/{{ item.dest }}"
     clone: true
     update: true
-  loop: "{{ git_repos }}"
+  loop: "{{ _git_repos_enabled }}"
+  loop_control:
+    label: "{{ item.name }}"
   register: result_git_update
-  ignore_errors: true
+  failed_when: false
   when:
-    - item.enabled
-    - result_git_base_dir is success
+    - item.dest not in _git_repo_unstashable_dests
+    - not (_git_repo_states[item.dest].exists
+      and _git_repo_states[item.dest].branch | length > 0
+      and not _git_repo_states[item.dest].origin_has_branch)
+    - git_repos_dirty_action == 'stash'
+      or _git_repo_states[item.dest].changed_files | length == 0
 
-- name: "{{ role_name }} | {{ task.name }} | Check if the desired remote references are present"
-  ansible.builtin.lineinfile:
-    name: "{{ git_base_dir }}/{{ item.dest }}/.git/config"
-    line: '[remote "{{ item.remote_name }}"]'
-    state: absent
-  loop: "{{ git_repos }}"
-  register: result_git_remote_check
-  check_mode: true
-  changed_when: false
-  when:
-    - item.enabled
-    - item.remote is not false
-    - result_git_base_dir is success
-
-- name: "{{ role_name }} | {{ task.name }} | Add remote references for forked Git repositories"
+- name: "{{ role_name }} | {{ task.name }} | Restore the stashed local changes"
   ansible.builtin.command:
-    chdir: "{{ git_base_dir }}/{{ item.item.dest }}"
-    cmd: "git remote add {{ item.item.remote_name }} {{ item.item.remote }}"
-  loop: "{{ result_git_remote_check.results }}"
-  register: result_git_remote_add
-  when:
-    - item is not skipped
-    - item.found == 0
+    argv:
+      - git
+      - -C
+      - "{{ git_base_dir }}/{{ item.item.dest }}"
+      - stash
+      - pop
+  loop: >-
+    {{ result_git_stash.results | default([])
+       | rejectattr('skipped', 'defined')
+       | selectattr('rc', 'defined') | selectattr('rc', 'equalto', 0)
+       | rejectattr('stdout', 'search', 'No local changes to save') | list }}
+  loop_control:
+    label: "{{ item.item.name }}"
+  register: result_git_restore
+  failed_when: false
+
+- name: "{{ role_name }} | {{ task.name }} | Collect the synchronized repository destinations"
+  ansible.builtin.set_fact:
+    _git_repo_synced_dests: >-
+      {{ result_git_update.results | default([])
+         | rejectattr('skipped', 'defined')
+         | rejectattr('msg', 'defined')
+         | map(attribute='item.dest') | list }}
 
 - name: "{{ role_name }} | {{ task.name }} | Ensure the forked Git repositories have desired remote references"
-  community.general.ini_file:
-    path: "{{ git_base_dir }}/{{ item.dest }}/.git/config"
-    section: 'remote "{{ item.remote_name }}"'
-    option: url
+  community.general.git_config:
+    name: "remote.{{ item.remote_name }}.url"
     value: "{{ item.remote }}"
-  loop: "{{ git_repos }}"
-  when:
-    - item.enabled
-    - item.remote is not false
-    - result_git_remote_add is skipped
+    scope: local
+    repo: "{{ git_base_dir }}/{{ item.dest }}"
+  loop: "{{ _git_repo_remote_targets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  vars:
+    _git_repo_remote_targets: >-
+      {{ _git_repos_enabled
+         | selectattr('remote', 'defined')
+         | rejectattr('remote', 'eq', false)
+         | selectattr('dest', 'in', _git_repo_available_dests)
+         | list }}
+    _git_repo_available_dests: >-
+      {{ (_git_repo_states | dict2items | selectattr('value.exists') | map(attribute='key') | list)
+         + (_git_repo_synced_dests | default([])) }}
+
+- name: "{{ role_name }} | {{ task.name }} | Record the repositories that were left untouched"
+  ansible.builtin.set_fact:
+    _git_repo_skips: >-
+      {{ _git_repo_skips | default([]) + [entry] }}
+  vars:
+    state: "{{ _git_repo_states[item.dest] }}"
+    local_only: >-
+      {{ state.exists and state.branch | length > 0 and not state.origin_has_branch }}
+    dirty: "{{ state.exists and state.changed_files | length > 0 }}"
+    unstashable: "{{ item.dest in _git_repo_unstashable_dests }}"
+    entry:
+      name: "{{ item.name }}"
+      dest: "{{ item.dest }}"
+      reason: "{{ 'branch' if local_only else 'dirty' }}"
+      changed_files: "{{ state.changed_files }}"
+      problem: >-
+        {{ (git_repos_dirty_action == 'fail' or unstashable) and dirty and not local_only }}
+      detail: >-
+        {{ 'changes cannot be stashed (for example a dirty submodule); repository left untouched'
+           if unstashable else '' }}
+  loop: "{{ _git_repos_enabled }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: >-
+    local_only or (dirty and (git_repos_dirty_action != 'stash' or unstashable))
 
 - name: "{{ role_name }} | {{ task.name }} | Ensure the Hints files"
   ansible.builtin.copy:
@@ -62,6 +225,24 @@
     src: "{{ role_path }}/files/GIT_HINTS.md"
     force: true
     backup: true
-  when:
-    - result_git_base_dir is success
-...
+
+- name: "{{ role_name }} | {{ task.name }} | Summarize the repository synchronization"
+  synchronize_repos_summary:
+    text: "{{ lookup('ansible.builtin.template', 'synchronize_repos_summary.j2') | trim }}"
+  vars:
+    _git_repo_total: "{{ _git_repos_enabled | length }}"
+    _git_update_results: >-
+      {{ result_git_update.results | default([])
+         | rejectattr('skipped', 'defined') | list }}
+    _git_update_failures: >-
+      {{ _git_update_results | selectattr('msg', 'defined') | list }}
+    _git_update_updated: >-
+      {{ _git_update_results | rejectattr('msg', 'defined')
+         | selectattr('changed') | list }}
+    _git_update_ok: >-
+      {{ _git_update_results | rejectattr('msg', 'defined')
+         | rejectattr('changed') | list }}
+    _git_restore_failures: >-
+      {{ result_git_restore.results | default([])
+         | rejectattr('skipped', 'defined')
+         | selectattr('rc', 'defined') | selectattr('rc', 'ne', 0) | list }}

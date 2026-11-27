@@ -1,0 +1,94 @@
+{#- Synchronization summary. Expects the variables set by the summary task. -#}
+{% set signatures = git_repo_error_signatures %}
+{% set samples = git_repos_summary_max_file_samples | int %}
+{% set category_order = ['auth', 'network', 'dirty', 'branch', 'stash-conflict', 'other'] %}
+{% set ns = namespace(groups={}, problems=0) %}
+
+{% for failure in _git_update_failures %}
+{%   set match = namespace(signature=none) %}
+{%   for signature in signatures %}
+{%     if match.signature is none and failure.msg is search(signature.patterns | join('|')) %}
+{%       set match.signature = signature %}
+{%     endif %}
+{%   endfor %}
+{%   set category = match.signature.category | default('other') %}
+{%   set reason = failure.msg | regex_replace('\s*\n\s*', ' ') | regex_replace('://[^/@\s]+@', '://***@') | trim %}
+{%   set entry = {
+      'name': failure.item.name,
+      'dest': failure.item.dest,
+      'repo': failure.item.repo,
+      'reason': reason,
+      'hint': match.signature.hint | default(git_repos_auth_hint)
+    } %}
+{%   set ns.groups = ns.groups | combine({category: ns.groups.get(category, []) + [entry]}) %}
+{%   set ns.problems = ns.problems + 1 %}
+{% endfor %}
+
+{% for skip in _git_repo_skips if skip.problem %}
+{%   set detail = skip.detail | default('') %}
+{%   set files = (skip.changed_files[:samples] | join(', ')) if skip.changed_files else '' %}
+{%   set reason = detail if detail else
+      (skip.changed_files | length ~ ' uncommitted file(s)' ~ (': ' ~ files if files else '')) %}
+{%   set entry = {
+      'name': skip.name,
+      'dest': skip.dest,
+      'repo': '',
+      'reason': reason,
+      'hint': ('Commit or discard the changes inside the submodule, then re-run the role.'
+               if detail else
+               'Commit or stash the local changes, or set git_repos_dirty_action to stash.')
+    } %}
+{%   set ns.groups = ns.groups | combine({'dirty': ns.groups.get('dirty', []) + [entry]}) %}
+{%   set ns.problems = ns.problems + 1 %}
+{% endfor %}
+
+{% for restore in _git_restore_failures %}
+{%   set conflict_line = (restore.stdout | default('')).split('\n')
+      | select('search', 'CONFLICT') | first | default('') %}
+{%   set detail = conflict_line if conflict_line else (restore.stderr | default('') | trim) %}
+{%   set reason = 'stash restore failed: ' ~ detail %}
+{%   set entry = {
+      'name': restore.item.item.name,
+      'dest': restore.item.item.dest,
+      'repo': '',
+      'reason': reason,
+      'hint': 'cd ' ~ git_base_dir ~ '/' ~ restore.item.item.dest ~ ' && git stash list; resolve conflicts, then git stash pop.'
+    } %}
+{%   set ns.groups = ns.groups | combine({'stash-conflict': ns.groups.get('stash-conflict', []) + [entry]}) %}
+{%   set ns.problems = ns.problems + 1 %}
+{% endfor %}
+
+{% set skipped_entries = _git_repo_skips | rejectattr('problem') | list %}
+{% set restore_failed_dests = _git_restore_failures | map(attribute='item.item.dest') | list %}
+{% set updated = _git_update_updated | rejectattr('item.dest', 'in', restore_failed_dests) | list | length %}
+{% set ok = _git_update_ok | rejectattr('item.dest', 'in', restore_failed_dests) | list | length %}
+{% set skipped = skipped_entries | length %}
+Repository sync: {{ _git_repo_total }} enabled | {{ updated }} updated | {{ ok }} up to date | {{ skipped }} skipped | {{ ns.problems }} need attention
+{% if ns.problems %}
+
+Needs attention:
+{% for category in category_order if category in ns.groups %}
+{%   set entries = ns.groups[category] %}
+[{{ category }}] {{ entries | length }} repositor{{ 'y' if entries | length == 1 else 'ies' }}
+{%   for entry in entries %}
+  - {{ entry.name }} ({{ entry.dest }})
+{%     if entry.repo %}
+    remote: {{ entry.repo | regex_replace('://[^/@\s]+@', '://***@') }}
+{%     endif %}
+    {{ entry.reason }}
+{%   endfor %}
+    fix: {{ entries[0].hint }}
+
+{% endfor %}
+{% endif %}
+{% if skipped_entries %}
+
+Skipped:
+{% for skip in skipped_entries %}
+{%   if skip.reason == 'branch' %}
+  - {{ skip.name }} ({{ skip.dest }}): local branch without an origin counterpart, left untouched
+{%   else %}
+  - {{ skip.name }} ({{ skip.dest }}): {{ skip.changed_files | length }} uncommitted file(s), left untouched
+{%   endif %}
+{% endfor %}
+{% endif %}
