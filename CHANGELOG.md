@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/marcusburghardt/ansible-role-git/compare/v3.0.0...v3.0.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **ci:** publish to Galaxy in release workflow ([0602282](https://github.com/marcusburghardt/ansible-role-git/commit/0602282a7232b216cc82446e065f7925318001d1))
+
 ## [3.0.0](https://github.com/marcusburghardt/ansible-role-git/compare/v2.1.0...v3.0.0) (2026-11-27)
 
 
